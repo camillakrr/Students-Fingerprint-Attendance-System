@@ -84,38 +84,38 @@ def create_classes(db):
 def create_attendance(db, fingerprints, serial_numbers):
     students = db['students']
     scanners = db['scanners']
-    timetable = db['timetable']
+    classes = db['classes']
     attendance = db['attendance']
     for i in range(100000):
-        fingerprint = secrets.choice(fingerprints)
-        student = students.query("json->>'fingerprint'='" + fingerprint + "'")[0]
+        fingerprint_hash = secrets.choice(fingerprints)
+        student = students.query("json->>'fingerprint_hash'='" + fingerprint_hash + "'")[0]
         student_id = student.id
         year = student.json['year']
         group = student.json['group']
         serial_number = secrets.choice(serial_numbers)
         scanner = scanners.query("json->>'serial_number'='" + str(serial_number) + "'")[0]
-        room = scanner.json['room']
+        classroom = scanner.json['classroom']
         unixtime = random.randint(1493078400, 1587772800)
-        time = datetime.utcfromtimestamp(unixtime).strftime('%d.%m.%Y %H:%M')
+        date = datetime.utcfromtimestamp(unixtime).strftime('%d.%m.%Y %H:%M')
         weekday = datetime.fromtimestamp(unixtime).strftime("%A")
         hours = int(datetime.fromtimestamp(unixtime).strftime("%H")) - 3
         minutes = int(datetime.fromtimestamp(unixtime).strftime("%M"))
         ts = hours * 60 + minutes
-        timeslot = timetable.query("json->>'room'='" + str(room) + "'AND json->>'year'='" + str(
+        timeslot = classes.query("json->>'classroom'='" + str(classroom) + "'AND json->>'year'='" + str(
             year) + "'AND array_position((json->>'groups')::integer[]," + str(
-            group) + ") IS NOT NULL AND json->>'weekday'='" + weekday + "'AND (json->>'ts')::integer<" + str(
-            ts + 5) + "AND (json->>'ts')::integer>" + str(ts - 90))
+            group) + ") IS NOT NULL AND json->>'weekday'='" + weekday + "'AND ((json->>'start_time')::json->>'hours')::integer * 60 + ((json->>'start_time')::json->>'minutes')::integer<" + str(
+            ts + 5) + "AND ((json->>'start_time')::json->>'hours')::integer * 60 + ((json->>'start_time')::json->>'minutes')::integer>" + str(
+            ts - 90))
         if len(timeslot) == 1:
             class_id = timeslot[0].id
-            start_time = timeslot[0].json['ts']
-            if ts <= start_time:
-                lateness = 0
+            start_time = timeslot[0].json['start_time']
+            time = int(start_time['hours']) * 60 + int(start_time['minutes'])
+            if ts <= time:
+                status = "in time"
             else:
-                lateness = ts - start_time
+                status = "late"
             attendance.put(
-                {"student_id": student_id, "class_id": class_id, "time": time, "lateness": lateness})
-        if len(timeslot) > 1:
-            print("blya")
+                {"student_id": student_id, "class_id": class_id, "date": date, "status": status})
 
 
 def main():
@@ -123,8 +123,8 @@ def main():
     db = client['attendance_system']
     fingerprints = create_students(db)
     serial_numbers = create_scanners(db)
-    create_timetable(db)
-    # create_attendance(db, fingerprints, serial_numbers)
+    create_classes(db)
+    create_attendance(db, fingerprints, serial_numbers)
 
 
 if __name__ == '__main__':
