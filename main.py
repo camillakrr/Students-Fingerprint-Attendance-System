@@ -9,7 +9,7 @@ from pg4nosql.PostgresNoSQLClient import PostgresNoSQLClient
 def create_students(db):
     students = db['students']
     fingerprints = []
-    for i in range(0, 100):
+    for i in range(0, 1000):
         first_name = names.get_first_name()
         last_name = names.get_last_name()
         year = random.randint(1, 4)
@@ -37,9 +37,9 @@ def create_readers(db):
 def create_timetable(db):
     timetable = db['timetable']
     courses = ['Discrete Math and Logic', 'Data Structure and Algorithms', 'Analitical Geometry and Linear Algebra',
-               'English', 'Introduction to Programming', 'Msthematical Analysis', 'Introduction to AI',
+               'English', 'Introduction to Programming', 'Mathematical Analysis', 'Introduction to AI',
                'Data Modeling and Databases', 'Software Project', 'Probability and Statistics', 'Networks',
-               'Control Theory', 'Digital Signal Processing', 'Information Retrieval', 'Data Minig',
+               'Control Theory', 'Digital Signal Processing', 'Information Retrieval', 'Data Mining',
                'Lean Software Development', 'Mechanics and Machines', 'Software System Design', 'Life Safety',
                'Practical Machine Learning and Deep Learning', 'Software Quality and Reliability']
     types = ['lecture', 'tutorial', 'lab']
@@ -50,61 +50,67 @@ def create_timetable(db):
     for i in range(1000):
         course = secrets.choice(courses)
         type = secrets.choice(types)
+        room = random.randint(100, 200)
         year = random.randint(1, 4)
         group = random.randint(1, 10)
-        room = random.randint(100, 200)
         weekday = secrets.choice(weekdays)
         time = secrets.choice(timeslots)
         timeSplit = time.split(":")
         ts = int(timeSplit[0]) * 60 + int(timeSplit[1])
         if type == "lab":
             if weekday + time + str(room) not in rooms and weekday + time + str(year) + str(group) not in groups:
-                rooms[weekday + time + str(room)] = "."
-                groups[weekday + time + str(year) + str(group)] = "."
+                rooms[weekday + time + str(room)] = "true"
+                groups[weekday + time + str(year) + str(group)] = "true"
                 timetable.put(
-                    {"course": course, "type": type, "room": room, "year": year, "group": "{" + str(group) + "}",
+                    {"course": course, "type": type, "room": room, "year": year, "groups": "{" + str(group) + "}",
                      "weekday": weekday, "time": time, "ts": ts})
         else:
             if weekday + time + str(room) not in rooms:
                 for i in range(10):
-                    if weekday + time + str(year) + str(i) in groups:
+                    if weekday + time + str(year) + str(i + 1) in groups:
                         break
                 if i == 9:
+                    rooms[weekday + time + str(room)] = "true"
+                    for j in range(10):
+                        groups[weekday + time + str(year) + str(j + 1)] = "true"
                     timetable.put(
-                        {"course": course, "type": type, "room": room, "year": year, "group": "{1,2,3,4,5,6,7,8,9,10}",
+                        {"course": course, "type": type, "room": room, "year": year, "groups": "{1,2,3,4,5,6,7,8,9,10}",
                          "weekday": weekday, "time": time, "ts": ts})
 
 
 def create_attendance(db, fingerprints, serial_numbers):
-    attendance = db['attendance']
     students = db['students']
     readers = db['readers']
     timetable = db['timetable']
-    for i in range(10000):
+    attendance = db['attendance']
+    for i in range(100000):
         fingerprint = secrets.choice(fingerprints)
         student = students.query("json->>'fingerprint'='" + fingerprint + "'")[0]
-        first_name = student.json['first_name']
-        last_name = student.json['last_name']
+        student_id = student.id
         year = student.json['year']
         group = student.json['group']
         serial_number = secrets.choice(serial_numbers)
-        room = readers.query("json->>'serial_number'='" + str(serial_number) + "'")[0].json['room']
+        reader = readers.query("json->>'serial_number'='" + str(serial_number) + "'")[0]
+        room = reader.json['room']
         unixtime = random.randint(1493078400, 1587772800)
+        time = datetime.utcfromtimestamp(unixtime).strftime('%d.%m.%Y %H:%M')
         weekday = datetime.fromtimestamp(unixtime).strftime("%A")
         hours = int(datetime.fromtimestamp(unixtime).strftime("%H")) - 3
         minutes = int(datetime.fromtimestamp(unixtime).strftime("%M"))
-        time = datetime.utcfromtimestamp(unixtime).strftime('%d.%m.%Y %H:%M')
         ts = hours * 60 + minutes
-        subject = timetable.query("json->>'room'='" + str(room) + "'AND json->>'year'='" + str(
-            year) + "'AND array_position((json->>'group')::integer[]," + str(
+        timeslot = timetable.query("json->>'room'='" + str(room) + "'AND json->>'year'='" + str(
+            year) + "'AND array_position((json->>'groups')::integer[]," + str(
             group) + ") IS NOT NULL AND json->>'weekday'='" + weekday + "'AND (json->>'ts')::integer<" + str(
-            ts + 10) + "AND (json->>'ts')::integer>" + str(ts - 10))
-        if len(subject) == 1:
-            course = subject[0].json['course']
-            type = subject[0].json['type']
+            ts + 5) + "AND (json->>'ts')::integer>" + str(ts - 90))
+        if len(timeslot) == 1:
+            class_id = timeslot[0].id
+            start_time = timeslot[0].json['ts']
+            if ts <= start_time:
+                lateness = 0
+            else:
+                lateness = ts - start_time
             attendance.put(
-                {'first_name': first_name, 'last_name': last_name, 'year': year, 'group': group, "course": course,
-                 "type": type, "room": room, "time": time})
+                {"student_id": student_id, "class_id": class_id, "time": time, "lateness": lateness})
 
 
 def main():
