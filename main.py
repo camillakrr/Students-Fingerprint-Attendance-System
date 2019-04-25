@@ -44,7 +44,7 @@ def create_classes(db):
                'Practical Machine Learning and Deep Learning', 'Software Quality and Reliability']
     types = ['lecture', 'tutorial', 'lab']
     weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-    timeslots = ['9:00', '10:35', '12:10', '14:10', '15:45', '17:20', '18:55', '20:30']
+    time_slots = ['9:00', '10:35', '12:10', '14:10', '15:45', '17:20', '18:55', '20:30']
     classrooms = dict()
     groups = dict()
     for i in range(1000):
@@ -54,9 +54,9 @@ def create_classes(db):
         year = random.randint(1, 4)
         group = random.randint(1, 10)
         weekday = secrets.choice(weekdays)
-        timeslot = secrets.choice(timeslots).split(":")
-        hours = timeslot[0]
-        minutes = timeslot[1]
+        time_slot = secrets.choice(time_slots).split(":")
+        hours = time_slot[0]
+        minutes = time_slot[1]
         if type == "lab":
             if weekday + hours + minutes + str(classroom) not in classrooms and weekday + hours + minutes + str(
                     year) + str(group) not in groups:
