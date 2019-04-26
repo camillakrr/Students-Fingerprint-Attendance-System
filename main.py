@@ -83,7 +83,7 @@ def create_attendance(db):
     attendance = db['attendance']
     for i in range(10000):
         unixtime = random.randint(1483228800, 1577836800)
-        date = datetime.fromtimestamp(unixtime).strftime('%d-%m-%Y %H:%M:%S')
+        date = datetime.fromtimestamp(unixtime).strftime('%Y-%m-%d %H:%M:%S')
         weekday = datetime.fromtimestamp(unixtime).strftime("%A")
         hours = int(datetime.fromtimestamp(unixtime).strftime("%H"))
         minutes = int(datetime.fromtimestamp(unixtime).strftime("%M"))
@@ -155,7 +155,7 @@ def query3(db):
     file = open("file3", "w")
     str1 = "select id as id, json->>'student_id' as student, json->>'class_id' as class, json->>'date' as date, json->>'status' as status from attendance where json->>'status' = 'late'"
     str2 = "select id as id, json->>'course' as course, json->>'type' as type, json->'start_time'->>'hours' as hours, json->'start_time'->>'minutes' as minutes from classes"
-    str3 = "abs(extract(hour from cast(a.date as date)) * 60 + extract(minute from cast(a.date as date)) - cast(c.hours as int) * 60 + cast(c.minutes as int)) > 10"
+    str3 = "abs(extract(hour from cast(a.date as date)) * 60 + extract(minute from cast(a.date as date)) - cast(c.hours as int) * 60 - cast(c.minutes as int)) > 10"
     query = "select * from ({}) a inner join ({}) c on cast(a.class as int) = c.id and({})".format(str1, str2, str3)
     output = db.execute(query)
     file.write(str(len(output)))
